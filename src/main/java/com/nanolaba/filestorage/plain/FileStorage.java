@@ -4,8 +4,10 @@ import com.nanolaba.filestorage.IStorage;
 import com.nanolaba.filestorage.IStorageInfo;
 import com.nanolaba.filestorage.StorageException;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -101,6 +103,7 @@ public class FileStorage implements IStorage {
                 }
             } finally {
                 out.close();
+                IOUtils.closeQuietly(in);
             }
         } catch (IOException e) {
             throw new StorageException("Can't read file for id '" + id + '\'', e, id);
@@ -150,7 +153,12 @@ public class FileStorage implements IStorage {
         File file = getFileForId(rootDirectory, id);
         if (file.exists()) {
             long size = file.length();
-            FileUtils.deleteQuietly(file);
+            try {
+//                FileUtils.forceDelete(file);
+                Files.delete(file.toPath());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
             storageInfo.decreaseStorageSize(size);
         }
     }
