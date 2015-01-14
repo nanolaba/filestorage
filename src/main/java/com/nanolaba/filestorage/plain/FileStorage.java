@@ -7,7 +7,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import java.io.*;
-import java.nio.file.Files;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -154,8 +153,8 @@ public class FileStorage implements IStorage {
         if (file.exists()) {
             long size = file.length();
             try {
-//                FileUtils.forceDelete(file);
-                Files.delete(file.toPath());
+                FileUtils.forceDelete(file);
+//                Files.delete(file.toPath());
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
