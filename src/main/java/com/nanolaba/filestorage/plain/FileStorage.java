@@ -75,10 +75,12 @@ public class FileStorage implements IStorage {
     private void rebuild(File file) throws StorageException {
         if (file.isDirectory()) {
             File[] files = file.listFiles();
-            if (files != null) for (File f : files) {
-                rebuild(f);
+            if (files != null) {
+                for (File f : files) {
+                    rebuild(f);
+                }
             }
-        } else if (file.getName().endsWith("." + datafileExtension)) {
+        } else if (file.getName().endsWith('.' + datafileExtension)) {
             storageInfo.increaseStorageSize(file.length());
         }
     }
@@ -87,13 +89,12 @@ public class FileStorage implements IStorage {
     public void save(Long id, InputStream in) throws StorageException {
         File file = getFileForId(rootDirectory, id);
         if (file.exists()) {
-            FileUtils.deleteQuietly(file);
+            delete(id);
         }
         long size = 0L;
         try {
             file.getParentFile().mkdirs();
-            FileOutputStream out = new FileOutputStream(file);
-            try {
+            try (FileOutputStream out = new FileOutputStream(file)) {
                 int i;
                 byte[] buff = new byte[bufferSize];
                 while ((i = in.read(buff)) != -1) {
@@ -101,7 +102,6 @@ public class FileStorage implements IStorage {
                     out.write(buff, 0, i);
                 }
             } finally {
-                out.close();
                 IOUtils.closeQuietly(in);
             }
         } catch (IOException e) {
@@ -115,15 +115,12 @@ public class FileStorage implements IStorage {
         File file = getFileForId(rootDirectory, id);
         if (file.exists()) {
             try {
-                FileInputStream in = new FileInputStream(file);
-                try {
+                try (FileInputStream in = new FileInputStream(file)) {
                     int i;
                     byte[] buff = new byte[bufferSize];
                     while ((i = in.read(buff)) != -1) {
                         out.write(buff, 0, i);
                     }
-                } finally {
-                    in.close();
                 }
             } catch (IOException e) {
                 throw new StorageException("Can't read file for id '" + id + '\'', e, id);
@@ -154,9 +151,8 @@ public class FileStorage implements IStorage {
             long size = file.length();
             try {
                 FileUtils.forceDelete(file);
-//                Files.delete(file.toPath());
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new StorageException("Can't delete file for id '" + id + '\'', e, id);
             }
             storageInfo.decreaseStorageSize(size);
         }
@@ -186,23 +182,18 @@ public class FileStorage implements IStorage {
             i++;
         }
 
-        path.append("." + datafileExtension);
+        path.append('.').append(datafileExtension);
 
-        File res = new File(new File(path.toString()).getAbsolutePath());
-        return res;
+        return new File(new File(path.toString()).getAbsolutePath());
     }
 
-    public static String serializeId(Long id) {
+    public String serializeId(Long id) {
         return String.valueOf(id);
     }
 
+    public List<Long> getAllIds(File root) {
 
-    protected Iterable<Long> getAllIds() {
-        return getAllIds(new File(rootDirectory));
-    }
-
-    private Iterable<Long> getAllIds(File root) {
-        List<Long> res = new LinkedList<Long>();
+        List<Long> res = new LinkedList<>();
 
         File[] files = root.listFiles();
         if (files != null) {
@@ -213,8 +204,8 @@ public class FileStorage implements IStorage {
                     }
                 } else {
                     String name = file.getAbsolutePath();
-                    if (name.endsWith("." + datafileExtension)) {
-                        name = getTextBetweenWords(name, new File(rootDirectory).getAbsolutePath(), "." + datafileExtension);
+                    if (name.endsWith('.' + datafileExtension)) {
+                        name = getTextBetweenWords(name, new File(rootDirectory).getAbsolutePath(), '.' + datafileExtension);
                         name = name.replace("/", "").replace("\\", "");
                         res.add(Long.valueOf(name));
                     }

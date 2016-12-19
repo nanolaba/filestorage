@@ -5,14 +5,15 @@ import com.nanolaba.filestorage.IStorageInfo;
 import com.nanolaba.filestorage.StorageException;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
+import org.apache.commons.compress.compressors.gzip.GzipParameters;
 
 import java.io.*;
+import java.util.zip.Deflater;
 
 public class GzipProxyStorage implements IStorage {
 
-
     private int bufferSize = 1024 * 8;
-
+    private int compressionLevel = Deflater.BEST_COMPRESSION;
     private IStorage originalStorage;
 
     public IStorage getOriginalStorage() {
@@ -31,6 +32,14 @@ public class GzipProxyStorage implements IStorage {
         this.bufferSize = bufferSize;
     }
 
+    public int getCompressionLevel() {
+        return compressionLevel;
+    }
+
+    public void setCompressionLevel(int compressionLevel) {
+        this.compressionLevel = compressionLevel;
+    }
+
     public void init() {
 
     }
@@ -42,17 +51,17 @@ public class GzipProxyStorage implements IStorage {
 
     @Override
     public void save(Long id, InputStream in) throws StorageException {
-        try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            GzipCompressorOutputStream gout = new GzipCompressorOutputStream(out);
 
-            int i;
-            byte[] buff = new byte[bufferSize];
-            while ((i = in.read(buff)) != -1) {
-                gout.write(buff, 0, i);
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            try (GzipCompressorOutputStream gout = new GzipCompressorOutputStream(out, getGzipParameters())) {
+
+                int i;
+                byte[] buff = new byte[bufferSize];
+                while ((i = in.read(buff)) != -1) {
+                    gout.write(buff, 0, i);
+                }
+                in.close();
             }
-            in.close();
-            gout.close();
 
             originalStorage.save(id, new ByteArrayInputStream(out.toByteArray()));
         } catch (IOException e) {
@@ -60,16 +69,20 @@ public class GzipProxyStorage implements IStorage {
         }
     }
 
+    private GzipParameters getGzipParameters() {
+        GzipParameters parameters = new GzipParameters();
+        parameters.setCompressionLevel(compressionLevel);
+        return parameters;
+    }
+
     @Override
     public void read(Long id, OutputStream out) throws StorageException {
-        try {
-            InputStream in = readAsStream(id);
+        try (InputStream in = readAsStream(id)) {
             int i;
             byte[] buff = new byte[bufferSize];
             while ((i = in.read(buff)) != -1) {
                 out.write(buff, 0, i);
             }
-            in.close();
         } catch (IOException e) {
             throw new StorageException("Can't read file", e, id);
         }

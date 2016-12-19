@@ -34,11 +34,8 @@ public class FileStorageInfo implements IStorageInfo {
                 propertiesFile.createNewFile();
             }
 
-            FileInputStream stream = new FileInputStream(propertiesFile);
-            try {
+            try (FileInputStream stream = new FileInputStream(propertiesFile)) {
                 properties.load(stream);
-            } finally {
-                stream.close();
             }
         } catch (IOException e) {
             throw new StorageException(e, null);
@@ -71,11 +68,8 @@ public class FileStorageInfo implements IStorageInfo {
         try {
             properties.setProperty(PROPERTY_LAST_UPDATE, DATE_FORMAT.format(new Date()));
 
-            FileOutputStream outputStream = new FileOutputStream(propertiesFile);
-            try {
+            try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
                 properties.store(outputStream, "");
-            } finally {
-                outputStream.close();
             }
         } catch (IOException e) {
             throw new StorageException(e, null);

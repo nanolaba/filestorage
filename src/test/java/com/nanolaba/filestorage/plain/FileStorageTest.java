@@ -42,9 +42,9 @@ public class FileStorageTest {
         fileStorage.save(1L, new ByteArrayInputStream(data.getBytes()));
 
         Assert.assertTrue(fileStorage.isExists(1L));
-        InputStream input = fileStorage.readAsStream(1L);
-        Assert.assertEquals(data, IOUtils.toString(input));
-        input.close();
+        try (InputStream input = fileStorage.readAsStream(1L)) {
+            Assert.assertEquals(data, IOUtils.toString(input));
+        }
 
         fileStorage.delete(1L);
         Assert.assertFalse(fileStorage.isExists(1L));
