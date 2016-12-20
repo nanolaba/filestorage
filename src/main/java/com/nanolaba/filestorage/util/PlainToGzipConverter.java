@@ -2,7 +2,6 @@ package com.nanolaba.filestorage.util;
 
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipParameters;
-import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -78,8 +77,22 @@ public class PlainToGzipConverter {
         deleteOldFile(file);
     }
 
-    protected void deleteOldFile(File file) throws IOException {
-        FileUtils.forceDelete(file);
+    protected boolean deleteOldFile(File file) throws IOException {
+        int attempts = 0;
+        while (!file.delete()) {
+            attempts++;
+            if (attempts > 1000) {
+                return false;
+            }
+
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return true;
     }
 
     protected File createNewFile(File file) {

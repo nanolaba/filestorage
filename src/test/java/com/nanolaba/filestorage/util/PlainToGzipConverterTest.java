@@ -95,9 +95,14 @@ public class PlainToGzipConverterTest {
         }
 
         @Override
-        protected void deleteOldFile(File file) throws IOException {
-            super.deleteOldFile(file);
-            System.out.println("File deleted: " + file.getAbsolutePath());
+        protected boolean deleteOldFile(File file) throws IOException {
+            boolean deleted = super.deleteOldFile(file);
+            if (deleted) {
+                System.out.println("File deleted: " + file.getAbsolutePath());
+            } else {
+                System.err.println("Can't delete file: " + file.getAbsolutePath());
+            }
+            return deleted;
         }
 
         @Override
