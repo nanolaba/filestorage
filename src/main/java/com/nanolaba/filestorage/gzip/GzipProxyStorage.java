@@ -6,6 +6,7 @@ import com.nanolaba.filestorage.StorageException;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipParameters;
+import org.apache.commons.io.FileUtils;
 
 import java.io.*;
 import java.util.zip.Deflater;
@@ -52,18 +53,26 @@ public class GzipProxyStorage implements IStorage {
     @Override
     public void save(Long id, InputStream in) throws StorageException {
 
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            try (GzipCompressorOutputStream gout = new GzipCompressorOutputStream(out, getGzipParameters())) {
+        try {
+            File tempFile = File.createTempFile("gps", "gz");
 
-                int i;
-                byte[] buff = new byte[bufferSize];
-                while ((i = in.read(buff)) != -1) {
-                    gout.write(buff, 0, i);
+            try (OutputStream out = new FileOutputStream(tempFile)) {
+                try (GzipCompressorOutputStream gout = new GzipCompressorOutputStream(out, getGzipParameters())) {
+
+                    int i;
+                    byte[] buff = new byte[bufferSize];
+                    while ((i = in.read(buff)) != -1) {
+                        gout.write(buff, 0, i);
+                    }
+                    in.close();
                 }
-                in.close();
-            }
 
-            originalStorage.save(id, new ByteArrayInputStream(out.toByteArray()));
+                try (FileInputStream fileInputStream = new FileInputStream(tempFile)) {
+                    originalStorage.save(id, fileInputStream);    // TODO: 06.08.2017 можно избежать использование темпового файла если сделать метод сохранения с аппендом
+                }
+            } finally {
+                FileUtils.deleteQuietly(tempFile);
+            }
         } catch (IOException e) {
             throw new StorageException("Can't save file", e, id);
         }
