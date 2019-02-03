@@ -7,8 +7,11 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import java.io.*;
-import java.util.LinkedList;
-import java.util.List;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.ReadableByteChannel;
 
 public class FileStorage implements IStorage {
 
@@ -86,20 +89,28 @@ public class FileStorage implements IStorage {
     }
 
     @Override
-    public void save(Long id, InputStream in) throws StorageException {
+    public void save(Long id, InputStream in, long size) throws StorageException {
         File file = getFileForId(rootDirectory, id);
         if (file.exists()) {
             delete(id);
         }
-        long size = 0L;
         try {
             file.getParentFile().mkdirs();
-            try (FileOutputStream out = new FileOutputStream(file)) {
-                int i;
-                byte[] buff = new byte[bufferSize];
-                while ((i = in.read(buff)) != -1) {
-                    size += (long) i;
-                    out.write(buff, 0, i);
+
+            try (RandomAccessFile raf = new RandomAccessFile(file, "rw"); FileChannel fc = raf.getChannel()) {
+                final FileLock fl = fc.tryLock();
+                if (fl == null) {
+                    throw new StorageException("Can't lock file for writing " + file, id);
+                } else {
+                    try (final ReadableByteChannel byteChannel = Channels.newChannel(in)) {
+                        for (final ByteBuffer buffer = ByteBuffer.allocate(1024); byteChannel.read(buffer) != -1; ) {
+                            buffer.flip();
+                            fc.write(buffer);
+                            buffer.clear();
+                        }
+                    } finally {
+                        fl.release();
+                    }
                 }
             } finally {
                 IOUtils.closeQuietly(in);
@@ -115,10 +126,9 @@ public class FileStorage implements IStorage {
         File file = getFileForId(rootDirectory, id);
         if (file.exists()) {
             try {
-                try (FileInputStream in = new FileInputStream(file)) {
+                try (RandomAccessFile in = new RandomAccessFile(file, "r")) {
                     int i;
-                    byte[] buff = new byte[bufferSize];
-                    while ((i = in.read(buff)) != -1) {
+                    for (byte[] buff = new byte[bufferSize]; (i = in.read(buff)) != -1; ) {
                         out.write(buff, 0, i);
                     }
                 }
@@ -189,46 +199,5 @@ public class FileStorage implements IStorage {
 
     public String serializeId(Long id) {
         return String.valueOf(id);
-    }
-
-    public List<Long> getAllIds(File root) {
-
-        List<Long> res = new LinkedList<>();
-
-        File[] files = root.listFiles();
-        if (files != null) {
-            for (File file : files) {
-                if (file.isDirectory()) {
-                    for (Long id : getAllIds(file)) {
-                        res.add(id);
-                    }
-                } else {
-                    String name = file.getAbsolutePath();
-                    if (name.endsWith('.' + datafileExtension)) {
-                        name = getTextBetweenWords(name, new File(rootDirectory).getAbsolutePath(), '.' + datafileExtension);
-                        name = name.replace("/", "").replace("\\", "");
-                        res.add(Long.valueOf(name));
-                    }
-                }
-            }
-        }
-
-        return res;
-    }
-
-    private static String getTextBetweenWords(String source, String begin, String end) {
-        String res = null;
-        if (source != null && begin != null && end != null) {
-            int firstLetterIndex = source.indexOf(begin);
-            if (firstLetterIndex >= 0) {
-                firstLetterIndex += begin.length();
-
-                int lastLetterIndex = source.indexOf(end, firstLetterIndex);
-                if (lastLetterIndex >= 0 && firstLetterIndex <= lastLetterIndex) {
-                    res = source.substring(firstLetterIndex, lastLetterIndex);
-                }
-            }
-        }
-        return res;
     }
 }

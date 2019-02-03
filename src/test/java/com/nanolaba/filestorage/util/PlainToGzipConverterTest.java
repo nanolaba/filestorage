@@ -19,7 +19,7 @@ import java.util.List;
 
 public class PlainToGzipConverterTest {
 
-    static final int NUMBER_OF_FILES = 2000;
+    static final int NUMBER_OF_FILES = 500;
 
     @Test
     public void testConvertion() throws Exception {
@@ -37,7 +37,8 @@ public class PlainToGzipConverterTest {
         oldStorage.init();
 
         for (int i = 0; i < NUMBER_OF_FILES; ++i) {
-            oldStorage.save((long) i, new ByteArrayInputStream(values.get(i).getBytes("UTF-8")));
+            byte[] bytes = values.get(i).getBytes("UTF-8");
+            oldStorage.save((long) i, new ByteArrayInputStream(bytes), bytes.length);
             Assert.assertEquals(values.get(i), valueToString(oldStorage, i));
         }
 

@@ -6,9 +6,9 @@ import com.nanolaba.filestorage.StorageException;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipParameters;
-import org.apache.commons.io.FileUtils;
 
 import java.io.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.zip.Deflater;
 
 public class GzipProxyStorage implements IStorage {
@@ -51,13 +51,19 @@ public class GzipProxyStorage implements IStorage {
     }
 
     @Override
-    public void save(Long id, InputStream in) throws StorageException {
+    public void save(Long id, InputStream in, long size) throws StorageException {
 
         try {
-            File tempFile = File.createTempFile("gps", "gz");
 
-            try (OutputStream out = new FileOutputStream(tempFile)) {
-                try (GzipCompressorOutputStream gout = new GzipCompressorOutputStream(out, getGzipParameters())) {
+
+            CountDownLatch latch = new CountDownLatch(2);
+
+            final PipedOutputStream output = new PipedOutputStream();
+            final PipedInputStream input = new PipedInputStream(output);
+
+
+            Thread thread1 = new Thread(() -> {
+                try (GzipCompressorOutputStream gout = new GzipCompressorOutputStream(output, getGzipParameters())) {
 
                     int i;
                     byte[] buff = new byte[bufferSize];
@@ -65,15 +71,41 @@ public class GzipProxyStorage implements IStorage {
                         gout.write(buff, 0, i);
                     }
                     in.close();
-                }
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                } finally {
+                    try {
+                        output.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
 
-                try (FileInputStream fileInputStream = new FileInputStream(tempFile)) {
-                    originalStorage.save(id, fileInputStream);    // TODO: 06.08.2017 можно избежать использование темпового файла если сделать метод сохранения с аппендом
+                    latch.countDown();
                 }
-            } finally {
-                FileUtils.deleteQuietly(tempFile);
-            }
-        } catch (IOException e) {
+            });
+
+
+            Thread thread2 = new Thread(() -> {
+                try {
+                    originalStorage.save(id, input, size);
+                } catch (StorageException e) {
+                    throw new RuntimeException(e);
+                } finally {
+                    try {
+                        input.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    latch.countDown();
+                }
+            });
+
+            thread1.start();
+            thread2.start();
+
+            latch.await();
+
+        } catch (IOException | InterruptedException e) {
             throw new StorageException("Can't save file", e, id);
         }
     }
