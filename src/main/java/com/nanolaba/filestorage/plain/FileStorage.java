@@ -103,7 +103,7 @@ public class FileStorage implements IStorage {
                     throw new StorageException("Can't lock file for writing " + file, id);
                 } else {
                     try (final ReadableByteChannel byteChannel = Channels.newChannel(in)) {
-                        for (final ByteBuffer buffer = ByteBuffer.allocate(1024); byteChannel.read(buffer) != -1; ) {
+                        for (final ByteBuffer buffer = ByteBuffer.allocate(bufferSize); byteChannel.read(buffer) != -1; ) {
                             buffer.flip();
                             fc.write(buffer);
                             buffer.clear();
