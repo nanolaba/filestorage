@@ -2,6 +2,7 @@ package com.nanolaba.filestorage.memory;
 
 import com.nanolaba.filestorage.IStorage;
 import com.nanolaba.filestorage.IStorageInfo;
+import com.nanolaba.filestorage.SaveResult;
 import com.nanolaba.filestorage.StorageException;
 import org.apache.commons.io.IOUtils;
 
@@ -23,11 +24,12 @@ public class MemoryStorage implements IStorage {
     }
 
     @Override
-    public void save(Long id, InputStream in) throws StorageException {
+    public SaveResult save(Long id, InputStream in) throws StorageException {
         try {
             byte[] value = IOUtils.toByteArray(in);
             data.put(id, value);
             totalSize += (long) value.length;
+            return new SaveResult(value.length);
         } catch (IOException e) {
             throw new StorageException(e, id);
         }

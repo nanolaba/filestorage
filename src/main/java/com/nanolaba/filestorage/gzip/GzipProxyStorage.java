@@ -2,6 +2,7 @@ package com.nanolaba.filestorage.gzip;
 
 import com.nanolaba.filestorage.IStorage;
 import com.nanolaba.filestorage.IStorageInfo;
+import com.nanolaba.filestorage.SaveResult;
 import com.nanolaba.filestorage.StorageException;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
@@ -11,6 +12,7 @@ import org.apache.commons.io.IOUtils;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.Deflater;
 import java.util.zip.GZIPInputStream;
 
@@ -63,16 +65,15 @@ public class GzipProxyStorage implements IStorage {
     }
 
     @Override
-    public void save(Long id, InputStream in) throws StorageException {
+    public SaveResult save(Long id, InputStream in) throws StorageException {
 
         try {
-
 
             CountDownLatch latch = new CountDownLatch(2);
 
             final PipedOutputStream output = new PipedOutputStream();
             final PipedInputStream input = new PipedInputStream(output);
-
+            AtomicLong totalRead = new AtomicLong();
 
             Thread thread1 = new Thread(() -> {
                 try (GzipCompressorOutputStream gout = new GzipCompressorOutputStream(output, getGzipParameters())) {
@@ -81,6 +82,9 @@ public class GzipProxyStorage implements IStorage {
                     byte[] buff = new byte[bufferSize];
                     while ((i = in.read(buff)) != -1) {
                         gout.write(buff, 0, i);
+                        if (i > 0) {
+                            totalRead.addAndGet(i);
+                        }
                     }
                     in.close();
                 } catch (IOException e) {
@@ -99,7 +103,10 @@ public class GzipProxyStorage implements IStorage {
 
             Thread thread2 = new Thread(() -> {
                 try {
-                    originalStorage.save(id, input);
+                    SaveResult result = originalStorage.save(id, input);
+                    if (filesizeStorage != null) {
+                        saveFilesize(id, result.getBytesSaved());
+                    }
                 } catch (StorageException e) {
                     throw new RuntimeException(e);
                 } finally {
@@ -116,6 +123,8 @@ public class GzipProxyStorage implements IStorage {
             thread2.start();
 
             latch.await();
+
+            return new SaveResult(totalRead.get());
 
         } catch (IOException | InterruptedException e) {
             throw new StorageException("Can't save file", e, id);
@@ -170,13 +179,16 @@ public class GzipProxyStorage implements IStorage {
                 return Long.parseLong(IOUtils.toString(filesizeStorage.readAsStream(id), StandardCharsets.UTF_8));
             } else {
                 long res = geFileSizeWithFullReading(id);
-                byte[] bytes = String.valueOf(res).getBytes();
-                filesizeStorage.save(id, new ByteArrayInputStream(bytes));
+                saveFilesize(id, res);
                 return res;
             }
         } catch (IOException e) {
             throw new StorageException("Can't read filesize", e, id);
         }
+    }
+
+    private void saveFilesize(Long id, long res) throws StorageException {
+        filesizeStorage.save(id, new ByteArrayInputStream(String.valueOf(res).getBytes()));
     }
 
     private long geFileSizeWithFullReading(Long id) throws StorageException {

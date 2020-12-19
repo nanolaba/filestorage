@@ -2,6 +2,7 @@ package com.nanolaba.filestorage.plain;
 
 import com.nanolaba.filestorage.IStorage;
 import com.nanolaba.filestorage.IStorageInfo;
+import com.nanolaba.filestorage.SaveResult;
 import com.nanolaba.filestorage.StorageException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -89,7 +90,7 @@ public class FileStorage implements IStorage {
     }
 
     @Override
-    public void save(Long id, InputStream in) throws StorageException {
+    public SaveResult save(Long id, InputStream in) throws StorageException {
         File file = getFileForId(rootDirectory, id);
         if (file.exists()) {
             delete(id);
@@ -118,7 +119,9 @@ public class FileStorage implements IStorage {
         } catch (IOException e) {
             throw new StorageException("Can't read file for id '" + id + '\'', e, id);
         }
-        storageInfo.increaseStorageSize(file.length());
+        long length = file.length();
+        storageInfo.increaseStorageSize(length);
+        return new SaveResult(length);
     }
 
     @Override
