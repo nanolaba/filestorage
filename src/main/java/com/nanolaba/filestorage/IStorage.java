@@ -7,7 +7,7 @@ public interface IStorage {
 
     void rebuild() throws StorageException;
 
-    void save(Long id, InputStream in, long size) throws StorageException;
+    void save(Long id, InputStream in) throws StorageException;
 
     void read(Long id, OutputStream out) throws StorageException;
 

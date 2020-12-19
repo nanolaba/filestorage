@@ -63,7 +63,7 @@ public class GzipProxyStorage implements IStorage {
     }
 
     @Override
-    public void save(Long id, InputStream in, long size) throws StorageException {
+    public void save(Long id, InputStream in) throws StorageException {
 
         try {
 
@@ -99,7 +99,7 @@ public class GzipProxyStorage implements IStorage {
 
             Thread thread2 = new Thread(() -> {
                 try {
-                    originalStorage.save(id, input, size);
+                    originalStorage.save(id, input);
                 } catch (StorageException e) {
                     throw new RuntimeException(e);
                 } finally {
@@ -171,7 +171,7 @@ public class GzipProxyStorage implements IStorage {
             } else {
                 long res = geFileSizeWithFullReading(id);
                 byte[] bytes = String.valueOf(res).getBytes();
-                filesizeStorage.save(id, new ByteArrayInputStream(bytes), bytes.length);
+                filesizeStorage.save(id, new ByteArrayInputStream(bytes));
                 return res;
             }
         } catch (IOException e) {

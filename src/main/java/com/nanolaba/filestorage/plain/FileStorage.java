@@ -89,7 +89,7 @@ public class FileStorage implements IStorage {
     }
 
     @Override
-    public void save(Long id, InputStream in, long size) throws StorageException {
+    public void save(Long id, InputStream in) throws StorageException {
         File file = getFileForId(rootDirectory, id);
         if (file.exists()) {
             delete(id);
@@ -118,7 +118,7 @@ public class FileStorage implements IStorage {
         } catch (IOException e) {
             throw new StorageException("Can't read file for id '" + id + '\'', e, id);
         }
-        storageInfo.increaseStorageSize(size);
+        storageInfo.increaseStorageSize(file.length());
     }
 
     @Override

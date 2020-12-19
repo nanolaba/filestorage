@@ -14,6 +14,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,8 +38,8 @@ public class PlainToGzipConverterTest {
         oldStorage.init();
 
         for (int i = 0; i < NUMBER_OF_FILES; ++i) {
-            byte[] bytes = values.get(i).getBytes("UTF-8");
-            oldStorage.save((long) i, new ByteArrayInputStream(bytes), bytes.length);
+            byte[] bytes = values.get(i).getBytes(StandardCharsets.UTF_8);
+            oldStorage.save((long) i, new ByteArrayInputStream(bytes));
             Assert.assertEquals(values.get(i), valueToString(oldStorage, i));
         }
 

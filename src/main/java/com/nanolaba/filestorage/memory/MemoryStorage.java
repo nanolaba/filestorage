@@ -23,7 +23,7 @@ public class MemoryStorage implements IStorage {
     }
 
     @Override
-    public void save(Long id, InputStream in, long size) throws StorageException {
+    public void save(Long id, InputStream in) throws StorageException {
         try {
             byte[] value = IOUtils.toByteArray(in);
             data.put(id, value);
