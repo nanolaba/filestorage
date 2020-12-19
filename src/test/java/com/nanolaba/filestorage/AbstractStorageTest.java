@@ -42,6 +42,8 @@ public abstract class AbstractStorageTest<T extends IStorage> {
             Assert.assertEquals(data, IOUtils.toString(input));
         }
 
+        Assert.assertEquals((long) data.length(), storage.size(1L));
+
         storage.delete(1L);
         Assert.assertFalse(storage.isExists(1L));
     }
@@ -98,6 +100,8 @@ public abstract class AbstractStorageTest<T extends IStorage> {
                     }
                 }
             }
+
+            Assert.assertEquals((long) testFile.length(), storage.size(fileId));
 
             storage.delete(fileId);
             Assert.assertFalse(storage.isExists(fileId));

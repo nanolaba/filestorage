@@ -10,6 +10,7 @@ import org.apache.commons.compress.compressors.gzip.GzipParameters;
 import java.io.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.zip.Deflater;
+import java.util.zip.GZIPInputStream;
 
 public class GzipProxyStorage implements IStorage {
 
@@ -142,6 +143,28 @@ public class GzipProxyStorage implements IStorage {
     @Override
     public void delete(Long id) throws StorageException {
         originalStorage.delete(id);
+    }
+
+    @Override
+    public long size(Long id) throws StorageException {
+        return geFileSizeWithFullReading(id);
+    }
+
+    private long geFileSizeWithFullReading(Long id) throws StorageException {
+        try (GZIPInputStream zis = new GZIPInputStream(originalStorage.readAsStream(id))) {
+            long size = 0L;
+            byte[] buf = new byte[1024 * 8];
+            while (zis.available() > 0) {
+                int read = zis.read(buf);
+                if (read > 0) {
+                    size += read;
+                }
+            }
+
+            return size;
+        } catch (IOException e) {
+            throw new StorageException("Can't read size", e, id);
+        }
     }
 
     @Override

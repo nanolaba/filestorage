@@ -64,6 +64,11 @@ public class MemoryStorage implements IStorage {
     }
 
     @Override
+    public long size(Long id) throws StorageException {
+        return data.get(id).length;
+    }
+
+    @Override
     public boolean isExists(Long id) throws StorageException {
         return data.containsKey(id);
     }

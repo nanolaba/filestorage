@@ -15,6 +15,8 @@ public interface IStorage {
 
     void delete(Long id) throws StorageException;
 
+    long size(Long id) throws StorageException;
+
     boolean isExists(Long id) throws StorageException;
 
     IStorageInfo getStorageInfo() throws StorageException;

@@ -169,6 +169,11 @@ public class FileStorage implements IStorage {
     }
 
     @Override
+    public long size(Long id) throws StorageException {
+        return getFileForId(rootDirectory, id).length();
+    }
+
+    @Override
     public boolean isExists(Long id) throws StorageException {
         return getFileForId(rootDirectory, id).exists();
     }
