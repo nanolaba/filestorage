@@ -23,9 +23,11 @@ public class FileStorageInfo implements IStorageInfo {
     private final File propertiesFile;
     private final Properties properties = new Properties();
 
+    private String filename = "info.properties";
+
     public FileStorageInfo(String rootDirectory) throws StorageException {
         root = new File(rootDirectory);
-        propertiesFile = new File(new File(rootDirectory + "/info.properties").getAbsolutePath());
+        propertiesFile = new File(new File(rootDirectory + '/' + filename).getAbsolutePath());
 
         try {
 
@@ -44,22 +46,22 @@ public class FileStorageInfo implements IStorageInfo {
 
     @Override
     public long getFileCount() throws StorageException {
-        return Long.valueOf(properties.getProperty(PROPERTY_FILE_COUNT, "0"));
+        return Long.parseLong(properties.getProperty(PROPERTY_FILE_COUNT, "0"));
     }
 
     @Override
     public long getTotalSize() throws StorageException {
-        return Long.valueOf(properties.getProperty(PROPERTY_TOTAL_SIZE, "0"));
+        return Long.parseLong(properties.getProperty(PROPERTY_TOTAL_SIZE, "0"));
     }
 
     public void increaseStorageSize(long size) throws StorageException {
-        properties.setProperty(PROPERTY_FILE_COUNT, String.valueOf(getFileCount() + 1));
+        properties.setProperty(PROPERTY_FILE_COUNT, String.valueOf(getFileCount() + 1L));
         properties.setProperty(PROPERTY_TOTAL_SIZE, String.valueOf(getTotalSize() + size));
         saveFile();
     }
 
     public void decreaseStorageSize(long size) throws StorageException {
-        properties.setProperty(PROPERTY_FILE_COUNT, String.valueOf(getFileCount() - 1));
+        properties.setProperty(PROPERTY_FILE_COUNT, String.valueOf(getFileCount() - 1L));
         properties.setProperty(PROPERTY_TOTAL_SIZE, String.valueOf(getTotalSize() - size));
         saveFile();
     }
@@ -91,5 +93,13 @@ public class FileStorageInfo implements IStorageInfo {
 
     public Properties getProperties() {
         return properties;
+    }
+
+    public String getFilename() {
+        return filename;
+    }
+
+    public void setFilename(String filename) {
+        this.filename = filename;
     }
 }
