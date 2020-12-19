@@ -6,8 +6,10 @@ import com.nanolaba.filestorage.StorageException;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipParameters;
+import org.apache.commons.io.IOUtils;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.zip.Deflater;
 import java.util.zip.GZIPInputStream;
@@ -17,6 +19,7 @@ public class GzipProxyStorage implements IStorage {
     private int bufferSize = 1024 * 8;
     private int compressionLevel = Deflater.BEST_COMPRESSION;
     private IStorage originalStorage;
+    private IStorage filesizeStorage;
 
     public IStorage getOriginalStorage() {
         return originalStorage;
@@ -40,6 +43,14 @@ public class GzipProxyStorage implements IStorage {
 
     public void setCompressionLevel(int compressionLevel) {
         this.compressionLevel = compressionLevel;
+    }
+
+    public IStorage getFilesizeStorage() {
+        return filesizeStorage;
+    }
+
+    public void setFilesizeStorage(IStorage filesizeStorage) {
+        this.filesizeStorage = filesizeStorage;
     }
 
     public void init() {
@@ -143,11 +154,29 @@ public class GzipProxyStorage implements IStorage {
     @Override
     public void delete(Long id) throws StorageException {
         originalStorage.delete(id);
+        if (filesizeStorage != null) {
+            filesizeStorage.delete(id);
+        }
     }
 
     @Override
     public long size(Long id) throws StorageException {
-        return geFileSizeWithFullReading(id);
+        return filesizeStorage == null ? geFileSizeWithFullReading(id) : getFilesizeFromStorage(id);
+    }
+
+    private long getFilesizeFromStorage(Long id) throws StorageException {
+        try {
+            if (filesizeStorage.isExists(id)) {
+                return Long.parseLong(IOUtils.toString(filesizeStorage.readAsStream(id), StandardCharsets.UTF_8));
+            } else {
+                long res = geFileSizeWithFullReading(id);
+                byte[] bytes = String.valueOf(res).getBytes();
+                filesizeStorage.save(id, new ByteArrayInputStream(bytes), bytes.length);
+                return res;
+            }
+        } catch (IOException e) {
+            throw new StorageException("Can't read filesize", e, id);
+        }
     }
 
     private long geFileSizeWithFullReading(Long id) throws StorageException {
