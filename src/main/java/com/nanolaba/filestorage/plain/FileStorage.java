@@ -9,10 +9,7 @@ import org.apache.commons.io.IOUtils;
 
 import java.io.*;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.*;
 
 public class FileStorage implements IStorage {
 
@@ -99,7 +96,7 @@ public class FileStorage implements IStorage {
             file.getParentFile().mkdirs();
 
             try (RandomAccessFile raf = new RandomAccessFile(file, "rw"); FileChannel fc = raf.getChannel()) {
-                final FileLock fl = fc.tryLock();
+                final FileLock fl = openLock(fc);
                 if (fl == null) {
                     throw new StorageException("Can't lock file for writing " + file, id);
                 } else {
@@ -122,6 +119,18 @@ public class FileStorage implements IStorage {
         long length = file.length();
         storageInfo.increaseStorageSize(length);
         return new SaveResult(length);
+    }
+
+    private FileLock openLock(FileChannel fc) throws IOException {
+        while (true) {
+            try {
+                return fc.tryLock();
+            } catch (OverlappingFileLockException ignored) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {/**/}
+            }
+        }
     }
 
     @Override
